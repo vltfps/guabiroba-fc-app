@@ -661,7 +661,11 @@ function age(b) {
 // localStorage. To enable real‑time-ish updates across devices, set this
 // constant to true and run the provided backend server. The backend must
 // implement REST endpoints as defined in backend/server.js.
-const USE_API = true;
+// Modo de operação do aplicativo.
+// Defina como `true` para habilitar sincronização em tempo quase real via API backend.
+// Enquanto o backend não estiver configurado corretamente, mantemos `false` para
+// utilizar somente o armazenamento local e garantir que o aplicativo funcione.
+const USE_API = false;
 // Base URL for the backend API. If you deploy the API elsewhere, update
 // this value accordingly.
 // URL do servidor de backend hospedado. Ajustado para apontar para a instância no Render.
@@ -733,13 +737,36 @@ const pages = {
   config: document.getElementById("page-config"),
   professores: document.getElementById("page-professores"),
 };
-tabs.forEach(btn => btn.addEventListener("click", () => {
-  tabs.forEach(b => b.classList.remove("active"));
-  btn.classList.add("active");
-  Object.values(pages).forEach(p => p.classList.add("hidden"));
-  pages[btn.dataset.tab].classList.remove("hidden");
-  renderAll();
-}));
+
+// Função para alternar abas manualmente. Isso permite desacoplar a lógica
+// de navegação de eventuais problemas de inicialização dos listeners. O
+// parâmetro `key` indica qual página será exibida. Sempre tentamos
+// atualizar a interface via renderAll(), mas envolvemos em try/catch para
+// evitar que erros em páginas específicas impeçam a navegação.
+function switchTab(key) {
+  // Remove classe ativa de todas as abas
+  tabs.forEach(b => b.classList.remove('active'));
+  // Encontra o botão correspondente e marca como ativo
+  const btn = document.querySelector(`[data-tab="${key}"]`);
+  if (btn) btn.classList.add('active');
+  // Oculta todas as páginas
+  Object.values(pages).forEach(p => p.classList.add('hidden'));
+  // Exibe a página correspondente
+  if (pages[key]) pages[key].classList.remove('hidden');
+  // Tenta atualizar conteúdos dinâmicos
+  try {
+    renderAll();
+  } catch (e) {
+    console.error('Erro ao renderizar interface:', e);
+  }
+}
+
+// Atribui a função switchTab() a cada botão de aba. Isso garante que
+// independentemente de outros scripts, a navegação continuará funcionando.
+tabs.forEach(btn => {
+  const key = btn.dataset.tab;
+  btn.addEventListener('click', () => switchTab(key));
+});
 
 // Export/Import
 document.getElementById("btnExport").addEventListener("click", () => {
