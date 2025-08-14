@@ -4,16 +4,19 @@
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>GUABIROBA.FC · Gestão</title>
+  <!-- Ajustamos o título para remover o sufixo de gestão -->
+  <title>GUABIROBA.FC</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header>
-    <!-- Logo e título -->
+    <!-- Logo e título: aumentamos o tamanho do logo via CSS e simplificamos o título.
+         Também removemos a indicação de modo offline e substituímos a mensagem por
+         uma frase motivacional da equipe.  -->
     <img src="logo.png" alt="Logo GUABIROBA.FC" class="logo">
     <div>
-      <h1>GUABIROBA.FC · Gestão (Offline)</h1>
-      <div class="small">Cadastros salvos no seu computador (localStorage)</div>
+      <h1>GUABIROBA.FC</h1>
+      <div class="small" id="header-subtitle">UNIDOS PELA NOSSA QUEBRADA</div>
     </div>
     <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
       <button class="secondary" id="btnExport">Backup (.json)</button>
@@ -127,7 +130,21 @@
             </div>
             <div>
               <label>Categoria</label>
-              <input id="turma-cat" placeholder="Sub-7, Sub-9...">
+              <!-- Substituímos o campo de texto por um menu suspenso com opções pré-definidas de categoria.
+                   Isso evita erros de digitação e facilita a seleção pelo usuário. O valor em branco
+                   permite a criação de categorias personalizadas caso nenhuma das opções se aplique. -->
+              <select id="turma-cat">
+                <option value="">Escolha</option>
+                <option>Sub-7</option>
+                <option>Sub-9</option>
+                <option>Sub-11</option>
+                <option>Sub-13</option>
+                <option>Sub-15</option>
+                <option>Sub-17</option>
+                <option>Sub-20</option>
+                <option>Feminino</option>
+                <option>Misto</option>
+              </select>
             </div>
             <div>
               <label>Técnico</label>
@@ -647,7 +664,8 @@ function age(b) {
 const USE_API = true;
 // Base URL for the backend API. If you deploy the API elsewhere, update
 // this value accordingly.
-const API_URL = 'http://localhost:3000';
+// URL do servidor de backend hospedado. Ajustado para apontar para a instância no Render.
+const API_URL = 'https://guabiroba-fc-backend.onrender.com';
 
 // Generic helpers for calling the backend API. If USE_API is false, these
 // functions return immediately without performing network requests.
