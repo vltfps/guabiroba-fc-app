@@ -1,0 +1,14 @@
+{
+  "name": "escolinha-futebol-app",
+  "version": "1.0.0",
+  "description": "Gestão de escolinha de futebol: alunos, turmas, matrículas, presença e relatórios (offline).",
+  "main": "main.js",
+  "author": "Você",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^30.0.0"
+  }
+}

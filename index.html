@@ -1,0 +1,1385 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>GUABIROBA.FC · Gestão</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <!-- Logo e título -->
+    <img src="logo.png" alt="Logo GUABIROBA.FC" class="logo">
+    <div>
+      <h1>GUABIROBA.FC · Gestão (Offline)</h1>
+      <div class="small">Cadastros salvos no seu computador (localStorage)</div>
+    </div>
+    <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+      <button class="secondary" id="btnExport">Backup (.json)</button>
+      <label class="secondary" style="border:1px solid #ddd; padding:10px 14px; border-radius:10px; cursor:pointer;">
+        Importar <input type="file" id="importFile" accept="application/json" class="hidden">
+      </label>
+      <button class="secondary hidden" id="btnLogout">Sair</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="tabs" id="tabs">
+      <button class="tab-btn active" data-tab="alunos">Alunos</button>
+      <button class="tab-btn" data-tab="turmas">Turmas</button>
+      <button class="tab-btn" data-tab="matriculas">Matrículas</button>
+      <button class="tab-btn" data-tab="presenca">Presença</button>
+      <button class="tab-btn" data-tab="relatorios">Relatórios</button>
+      <button class="tab-btn" data-tab="mensalidades">Mensalidades</button>
+      <button class="tab-btn" data-tab="arrecadacao">Arrecadação</button>
+      <!-- Botão para gerenciar usuários (visível apenas para administradores) -->
+      <button class="tab-btn" data-tab="usuarios">Usuários</button>
+      <!-- Botão de configurações (visível apenas para administradores) -->
+      <button class="tab-btn" data-tab="config">Configurações</button>
+      <!-- Novo botão de resumo de aulas por professor -->
+      <button class="tab-btn" data-tab="professores">Professores</button>
+    </div>
+
+    <div id="page-alunos" class="page" style="margin-top:16px;">
+      <div class="grid grid-2">
+        <div class="card">
+          <!-- Título do formulário de aluno. Será alterado via JS quando estiver editando -->
+          <h3 class="section-title" id="aluno-form-title">Novo aluno</h3>
+          <p class="section-desc">Registre dados básicos</p>
+          <div class="kv">
+            <div>
+              <label>Nome completo</label>
+              <input id="aluno-nome" placeholder="Ex.: João da Silva">
+            </div>
+            <div>
+              <label>Data de nascimento</label>
+              <input id="aluno-nasc" type="date">
+            </div>
+            <div>
+              <label>Telefone</label>
+              <input id="aluno-fone" placeholder="(xx) xxxxx-xxxx">
+            </div>
+            <div>
+              <label>Posição</label>
+              <input id="aluno-pos" placeholder="Ex.: Goleiro, Atacante">
+            </div>
+          <div>
+            <label>CPF</label>
+            <!-- Campo obrigatório para CPF. Aceita apenas números. -->
+            <input id="aluno-cpf" type="text" placeholder="000.000.000-00" pattern="\d{3}\.\d{3}\.\d{3}-\d{2}" required>
+          </div>
+          <div>
+            <label>Mensalidade (R$)</label>
+            <!-- Campo para valor de mensalidade no formato brasileiro (R$). Usamos type="number" para permitir apenas números,
+                 mas o placeholder já está no padrão de moeda brasileira. -->
+            <input id="aluno-fee" type="number" min="0" step="0.01" placeholder="R$ 80,00" lang="pt-BR">
+          </div>
+          </div>
+          <div style="margin-top:12px;">
+            <label>Observações</label>
+            <textarea id="aluno-notes" placeholder="Informações relevantes"></textarea>
+          </div>
+          <div style="margin-top:12px;">
+            <button id="btnAddAluno">Adicionar aluno</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="toolbar">
+            <div>
+              <h3 class="section-title">Alunos</h3>
+              <p class="section-desc">Total: <span id="alunos-total">0</span></p>
+            </div>
+            <div class="right">
+              <input id="aluno-busca" placeholder="Buscar por nome..." style="width:220px;">
+            </div>
+          </div>
+          <div style="margin-top:6px; overflow:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Nasc.</th>
+                  <th>Idade</th>
+                  <th>Posição</th>
+                  <th>Telefone</th>
+                  <th style="text-align:right;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="alunos-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-turmas" class="page hidden" style="margin-top:16px;">
+      <div class="grid grid-2">
+        <div class="card" id="turma-form-card">
+          <!-- Título do formulário de turma. Alterado quando editando -->
+          <h3 class="section-title" id="turma-form-title">Nova turma</h3>
+          <p class="section-desc">Defina categoria e agenda</p>
+          <div class="kv">
+            <div>
+              <label>Nome da turma</label>
+              <input id="turma-nome" placeholder="Ex.: Sub-11 A">
+            </div>
+            <div>
+              <label>Categoria</label>
+              <input id="turma-cat" placeholder="Sub-7, Sub-9...">
+            </div>
+            <div>
+              <label>Técnico</label>
+              <input id="turma-coach" placeholder="Nome do treinador">
+            </div>
+            <div>
+              <label>Local</label>
+              <input id="turma-local" placeholder="Ex.: Campo Municipal">
+            </div>
+            <div>
+              <label>Dia da semana</label>
+              <select id="turma-dia">
+                <option value="">Escolha</option>
+                <option>Segunda</option><option>Terça</option><option>Quarta</option>
+                <option>Quinta</option><option>Sexta</option><option>Sábado</option><option>Domingo</option>
+              </select>
+            </div>
+            <div>
+              <label>Horário</label>
+              <input id="turma-hora" type="time">
+            </div>
+            <div>
+              <label>Capacidade (opcional)</label>
+              <input id="turma-cap" type="number" min="1">
+            </div>
+          </div>
+          <div style="margin-top:12px;">
+            <button id="btnAddTurma">Criar turma</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="toolbar">
+            <div>
+              <h3 class="section-title">Turmas</h3>
+              <p class="section-desc">Total: <span id="turmas-total">0</span></p>
+            </div>
+            <div class="right">
+              <input id="turma-busca" placeholder="Buscar turma..." style="width:220px;">
+            </div>
+          </div>
+          <div style="margin-top:6px; overflow:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Turma</th><th>Categoria</th><th>Treino</th><th>Técnico</th><th>Local</th><th>Alunos</th><th style="text-align:right;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="turmas-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-matriculas" class="page hidden" style="margin-top:16px;">
+      <div class="card">
+        <h3 class="section-title">Vincular aluno à turma</h3>
+        <p class="section-desc">Selecione um aluno e uma turma</p>
+        <div class="grid grid-3">
+          <select id="mat-aluno"></select>
+          <select id="mat-turma"></select>
+          <button id="btnMatricular">Matricular</button>
+        </div>
+        <div class="grid grid-2" id="mat-listas" style="margin-top:16px;"></div>
+      </div>
+    </div>
+
+    <div id="page-presenca" class="page hidden" style="margin-top:16px;">
+      <div class="card">
+        <div class="toolbar">
+          <div>
+            <h3 class="section-title">Chamada</h3>
+            <p class="section-desc">Marque presença por turma e data</p>
+          </div>
+          <div class="right">
+            <select id="pres-turma"></select>
+            <input type="date" id="pres-data">
+            <button id="btnSalvarPres">Salvar presença</button>
+            <button id="btnPrintPres" class="secondary">Imprimir folha</button>
+          </div>
+        </div>
+        <div style="margin-top:6px; overflow:auto;">
+          <table>
+            <thead><tr><th>Aluno</th><th style="text-align:center;">Presente?</th></tr></thead>
+            <tbody id="pres-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-relatorios" class="page hidden" style="margin-top:16px;">
+      <div class="grid grid-2">
+        <div class="card">
+          <h3 class="section-title">Resumo de matrículas</h3>
+          <p class="section-desc">Alunos por turma</p>
+          <div style="overflow:auto;">
+            <table>
+              <thead><tr><th>Turma</th><th style="text-align:right;">Alunos</th></tr></thead>
+              <tbody id="rep-mat"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h3 class="section-title">Presença (30 dias)</h3>
+          <p class="section-desc">Ranking por assiduidade</p>
+          <div style="overflow:auto;">
+            <table>
+              <thead><tr><th>Aluno</th><th style="text-align:right;">Presenças</th><th style="text-align:right;">Aulas</th><th style="text-align:right;">% Presença</th></tr></thead>
+              <tbody id="rep-pres"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Página Mensalidades -->
+    <div id="page-mensalidades" class="page hidden" style="margin-top:16px;">
+      <div class="card">
+        <h3 class="section-title">Mensalidades</h3>
+        <p class="section-desc">Gerencie pagamentos mensais</p>
+        <div class="kv">
+          <div>
+            <label>Mês de referência</label>
+            <input id="mensal-month" type="month">
+          </div>
+          <div style="display:flex; align-items:flex-end;">
+            <button id="btnLoadMensalidades">Carregar</button>
+          </div>
+        </div>
+        <div style="margin-top:12px; overflow:auto;">
+          <table>
+            <thead><tr><th>Aluno</th><th style="text-align:center;">Pago?</th><th style="text-align:right;">Valor (R$)</th></tr></thead>
+            <tbody id="mensal-tbody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:12px;">
+          <button id="btnSalvarMensalidades">Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Página Arrecadação -->
+    <div id="page-arrecadacao" class="page hidden" style="margin-top:16px;">
+      <div class="card">
+        <h3 class="section-title">Arrecadação</h3>
+        <p class="section-desc">Total arrecadado e por mês</p>
+        <div style="overflow:auto;">
+        <table>
+            <thead>
+              <tr>
+                <th>Mês</th>
+                <th style="text-align:right;">Total (R$)</th>
+                <th style="text-align:right;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="arrecad-tbody"></tbody>
+        </table>
+        </div>
+        <div style="margin-top:12px;">
+          <h4>Total geral: R$ <span id="arrecad-total"></span></h4>
+        </div>
+      </div>
+    </div>
+
+    <!-- Página Usuários (gerenciamento de contas) -->
+    <div id="page-usuarios" class="page hidden" style="margin-top:16px;">
+      <div class="card">
+        <h3 class="section-title">Gerenciar usuários</h3>
+        <p class="section-desc">Crie novos professores e defina seus acessos</p>
+        <div class="kv">
+          <div>
+            <label>Nome de usuário</label>
+            <input id="user-username" placeholder="Ex.: prof1">
+          </div>
+          <div>
+            <label>Senha</label>
+            <input id="user-password" type="password" placeholder="Senha">
+          </div>
+          <div>
+            <label>Confirme a senha</label>
+            <input id="user-password-conf" type="password" placeholder="Confirmar senha">
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <label>Acessos permitidos</label>
+          <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:6px;">
+            <label><input type="checkbox" data-up="alunos" checked> Alunos</label>
+            <label><input type="checkbox" data-up="turmas" checked> Turmas</label>
+            <label><input type="checkbox" data-up="matriculas" checked> Matrículas</label>
+            <label><input type="checkbox" data-up="presenca" checked> Presença</label>
+            <label><input type="checkbox" data-up="relatorios" checked> Relatórios</label>
+            <label><input type="checkbox" data-up="mensalidades"> Mensalidades</label>
+            <label><input type="checkbox" data-up="arrecadacao"> Arrecadação</label>
+              <label><input type="checkbox" data-up="professores"> Professores</label>
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <button id="btnAddUser">Criar usuário</button>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <h3 class="section-title">Usuários existentes</h3>
+        <div style="overflow:auto;">
+          <table>
+            <thead><tr><th>Usuário</th><th>Papel</th><th>Acessos</th><th style="text-align:right;">Ações</th></tr></thead>
+            <tbody id="users-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Página Configurações (somente administradores) -->
+    <div id="page-config" class="page hidden" style="margin-top:16px;">
+      <div class="card">
+        <h3 class="section-title">Configurações administrativas</h3>
+        <p class="section-desc">Defina parâmetros globais do aplicativo</p>
+        <div class="kv">
+          <div>
+            <label>Dia de vencimento (1–28)</label>
+            <input id="config-due-day" type="number" min="1" max="28" placeholder="10">
+          </div>
+          <div>
+            <label>Mensalidade padrão (R$)</label>
+            <input id="config-default-fee" type="number" min="0" step="0.01" placeholder="R$">
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <label>Texto do rodapé</label>
+          <input id="config-footer-text" type="text" placeholder="Aplicativo desenvolvido por..." style="width:100%;">
+        </div>
+        <div style="margin-top:12px;">
+          <label>Mensagem padrão do WhatsApp</label>
+          <textarea id="config-whats-msg" placeholder="Ex.: Olá, aqui é da escolinha GUABIROBA.FC..." style="width:100%; height:80px;"></textarea>
+        </div>
+        <div style="margin-top:12px;">
+          <button id="btnSaveConfig">Salvar configurações</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Página Resumo de Professores -->
+    <div id="page-professores" class="page hidden" style="margin-top:16px;">
+      <div class="card">
+        <h3 class="section-title">Resumo de aulas por professor</h3>
+        <p class="section-desc">Número de treinos realizados na última semana (7 dias)</p>
+        <div style="overflow:auto;">
+          <table>
+            <thead><tr><th>Professor</th><th style="text-align:right;">Aulas na semana</th></tr></thead>
+            <tbody id="prof-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    </div>
+
+    <!-- Tela de login -->
+    <!-- Tela de login (fora da .container) -->
+    <div id="login-screen" class="login-screen hidden">
+      <div class="login-card">
+        <h2>Login</h2>
+        <div>
+          <label for="login-user">Usuário:</label><br/>
+          <input type="text" id="login-user" placeholder="Usuário" style="width:100%; margin-top:4px;">
+        </div>
+        <div style="margin-top:12px;">
+          <label for="login-pass">Senha:</label><br/>
+          <input type="password" id="login-pass" placeholder="Senha" style="width:100%; margin-top:4px;">
+        </div>
+        <div style="margin-top:16px; text-align:center;">
+          <!-- The onclick attribute is a fallback in case event listeners do not attach -->
+          <button id="btnLogin">Entrar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div>Feito para sua escolinha · 100% offline</div>
+      <div id="footnote-text">Aplicativo desenvolvido por Matheus Cabral Valente, versão BETA</div>
+    </div>
+  </div>
+
+<script>
+// alert removido após depuração
+// Sistema de login baseado em contas (administrador e professores)
+// Funções utilitárias definidas antes de usá-las
+// Gera um identificador simples
+const uid = () => Math.random().toString(36).slice(2,10);
+// Retorna data de hoje em ISO (AAAA-MM-DD)
+const todayISO = () => new Date().toISOString().slice(0,10);
+// Chaves de armazenamento para outras entidades
+const K = {
+  students: "efut_students_v1",
+  classes: "efut_classes_v1",
+  enrollments: "efut_enrollments_v1",
+  attendance: "efut_attendance_v1",
+  payments: "efut_payments_v1",
+  settings: "efut_settings_v1",
+};
+// Inicialização do script
+// Persistência de usuários
+const K_USERS = "efut_users_v1";
+// Carrega usuários do localStorage
+let users = load(K_USERS, []);
+// Garante que exista um usuário administrador padrão com senha gbb258789
+function ensureDefaultAdmin() {
+  if (!users || !Array.isArray(users)) users = [];
+  // Verifica se existe um administrador; caso exista, atualiza a senha para gbb258789
+  const adminUser = users.find(u => u.role === 'admin');
+  if (adminUser) {
+    if (adminUser.password !== 'gbb258789') {
+      adminUser.password = 'gbb258789';
+    }
+  } else {
+    users.push({ id: uid(), username: 'admin', password: 'gbb258789', role: 'admin', permissions: {} });
+  }
+  save(K_USERS, users);
+}
+ensureDefaultAdmin();
+
+// Usuário atualmente logado
+// Armazenamos o usuário apenas na sessionStorage para que, ao fechar o app,
+// a sessão seja encerrada automaticamente. Dessa forma, ao reabrir, será necessário
+// fazer login novamente.
+let currentUser = null;
+try {
+  const cu = sessionStorage.getItem('currentUser');
+  if (cu) currentUser = JSON.parse(cu);
+} catch { currentUser = null; }
+function showLogin() {
+  const scr = document.getElementById('login-screen');
+  if (scr) {
+    scr.classList.remove('hidden');
+    scr.style.display = 'flex';
+  }
+  const logoutBtn = document.getElementById('btnLogout');
+  if (logoutBtn) logoutBtn.classList.add('hidden');
+}
+function hideLogin() {
+  const scr = document.getElementById('login-screen');
+  if (scr) {
+    scr.classList.add('hidden');
+    scr.style.display = 'none';
+  }
+  const logoutBtn = document.getElementById('btnLogout');
+  if (logoutBtn) logoutBtn.classList.remove('hidden');
+}
+
+// Controla a visibilidade das abas conforme o perfil/permissões do usuário
+function renderRoleAccess() {
+  // determina permissões baseadas no usuário
+  let perms = {};
+  if (currentUser) {
+    if (currentUser.role === 'admin') {
+      perms = { alunos:true, turmas:true, matriculas:true, presenca:true, relatorios:true, mensalidades:true, arrecadacao:true, usuarios:true, config:true, professores:true };
+    } else {
+      perms = Object.assign({}, currentUser.permissions || {});
+    }
+  }
+  // Percorre todas as páginas e botões e ajusta exibição
+  Object.keys(pages).forEach(key => {
+    const btn = document.querySelector(`[data-tab="${key}"]`);
+    if (!btn) return;
+    if (!currentUser) {
+      // usuário não logado: ocultar todas as abas (serão mostradas após login)
+      btn.style.display = 'none';
+    } else if (currentUser.role === 'admin') {
+      btn.style.display = '';
+    } else {
+      btn.style.display = perms[key] ? '' : 'none';
+    }
+  });
+  // Se a aba ativa não estiver permitida, seleciona a primeira permitida
+  const activeBtn = document.querySelector('.tab-btn.active');
+  if (activeBtn && currentUser && currentUser.role !== 'admin') {
+    const tabKey = activeBtn.dataset.tab;
+    if (!perms[tabKey]) {
+      let firstAllowed = null;
+      for (const key of Object.keys(pages)) {
+        if (perms[key]) { firstAllowed = key; break; }
+      }
+      if (firstAllowed) {
+        tabs.forEach(b => b.classList.remove('active'));
+        Object.values(pages).forEach(p => p.classList.add('hidden'));
+        pages[firstAllowed].classList.remove('hidden');
+        const btnToActivate = document.querySelector(`[data-tab="${firstAllowed}"]`);
+        if (btnToActivate) btnToActivate.classList.add('active');
+      }
+    }
+  }
+}
+
+// Login handler: autentica usuário pelo nome e senha
+const loginBtn = document.getElementById('btnLogin');
+if (loginBtn) {
+  loginBtn.addEventListener('click', () => {
+    // clique no login
+    const username = document.getElementById('login-user').value.trim();
+    const pass = document.getElementById('login-pass').value;
+    let u = users.find(x => x.username === username && x.password === pass);
+    // Fallback: se admin inserir credenciais padrão, cria/atualiza a conta
+    if (!u && username === 'admin' && pass === 'gbb258789') {
+      // procura por conta admin existente
+      let existingAdmin = users.find(x => x.role === 'admin');
+      if (existingAdmin) {
+        existingAdmin.username = 'admin';
+        existingAdmin.password = 'gbb258789';
+        u = existingAdmin;
+      } else {
+        u = { id: uid(), username: 'admin', password: 'gbb258789', role: 'admin', permissions: {} };
+        users.push(u);
+      }
+      save(K_USERS, users);
+    }
+    if (u) {
+      currentUser = u;
+      // salva na sessão (não persiste após fechar a aba)
+      sessionStorage.setItem('currentUser', JSON.stringify(u));
+      hideLogin();
+      renderRoleAccess();
+      renderAll();
+    } else {
+      alert('Usuário ou senha incorretos');
+    }
+  });
+}
+// Fallback para o botão de login (caso atributos inline sejam utilizados)
+function doLogin() {
+  const username = document.getElementById('login-user').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  let u = users.find(x => x.username === username && x.password === pass);
+  if (!u && username === 'admin' && pass === 'gbb258789') {
+    let existingAdmin = users.find(x => x.role === 'admin');
+    if (existingAdmin) {
+      existingAdmin.username = 'admin';
+      existingAdmin.password = 'gbb258789';
+      u = existingAdmin;
+    } else {
+      u = { id: uid(), username: 'admin', password: 'gbb258789', role: 'admin', permissions: {} };
+      users.push(u);
+    }
+    save(K_USERS, users);
+  }
+  if (u) {
+    currentUser = u;
+    sessionStorage.setItem('currentUser', JSON.stringify(u));
+    hideLogin();
+    renderRoleAccess();
+    renderAll();
+  } else {
+    alert('Usuário ou senha incorretos');
+  }
+}
+// Botão de logout limpa usuário corrente e volta para login
+document.getElementById('btnLogout').addEventListener('click', () => {
+  // remove usuário da sessão para que seja solicitado login ao reabrir o app
+  sessionStorage.removeItem('currentUser');
+  currentUser = null;
+  showLogin();
+});
+// Utilities
+function load(k, def) { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : def; } catch { return def; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+function age(b) {
+  if(!b) return "—";
+  const d = new Date(b); if(isNaN(d.getTime())) return "—";
+  const n = new Date();
+  let a = n.getFullYear() - d.getFullYear();
+  const m = n.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && n.getDate() < d.getDate())) a--;
+  return a;
+}
+
+// State
+let students = load(K.students, []);
+let classes = load(K.classes, []);
+let enrollments = load(K.enrollments, []);
+let attendance = load(K.attendance, []);
+let payments = load(K.payments, []);
+
+// Configurações globais. Podem incluir dia de vencimento das mensalidades, valor
+// padrão de mensalidade e texto do rodapé. Se não existirem valores salvos,
+// definimos padrões: vencimento no dia 10 e nenhum valor padrão de mensalidade.
+let settings = load(K.settings, { dueDay: 10, defaultFee: null, footerText: null, whatsMsg: '' });
+
+// Controla se estamos editando um aluno existente. Quando null, significa que
+// o formulário está em modo de criação. Quando contém um id, indica que
+// o próximo envio irá atualizar o aluno com esse id.
+let editingStudentId = null;
+
+// Controla se estamos editando uma turma. Similar a editingStudentId.
+let editingClassId = null;
+
+// Tabs
+const tabs = document.querySelectorAll(".tab-btn");
+const pages = {
+  alunos: document.getElementById("page-alunos"),
+  turmas: document.getElementById("page-turmas"),
+  matriculas: document.getElementById("page-matriculas"),
+  presenca: document.getElementById("page-presenca"),
+  relatorios: document.getElementById("page-relatorios"),
+  mensalidades: document.getElementById("page-mensalidades"),
+  arrecadacao: document.getElementById("page-arrecadacao"),
+  usuarios: document.getElementById("page-usuarios"),
+  config: document.getElementById("page-config"),
+  professores: document.getElementById("page-professores"),
+};
+tabs.forEach(btn => btn.addEventListener("click", () => {
+  tabs.forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  Object.values(pages).forEach(p => p.classList.add("hidden"));
+  pages[btn.dataset.tab].classList.remove("hidden");
+  renderAll();
+}));
+
+// Export/Import
+document.getElementById("btnExport").addEventListener("click", () => {
+  const data = { students, classes, enrollments, attendance };
+  const a = document.createElement("a");
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  a.href = URL.createObjectURL(blob);
+  a.download = `escolinha_backup_${todayISO()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+document.getElementById("importFile").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(String(reader.result || "{}"));
+      if (data.students && data.classes) {
+        students = data.students; classes = data.classes;
+        enrollments = data.enrollments || []; attendance = data.attendance || [];
+        save(K.students, students); save(K.classes, classes);
+        save(K.enrollments, enrollments); save(K.attendance, attendance);
+        alert("Backup importado!");
+        renderAll();
+      } else {
+        alert("Arquivo inválido.");
+      }
+    } catch(_) { alert("Não foi possível ler o arquivo."); }
+  };
+  reader.readAsText(file);
+});
+
+// Alunos
+document.getElementById("btnAddAluno").addEventListener("click", () => {
+  const nomeInput = document.getElementById("aluno-nome");
+  const nascInput = document.getElementById("aluno-nasc");
+  const foneInput = document.getElementById("aluno-fone");
+  const posInput = document.getElementById("aluno-pos");
+  const notesInput = document.getElementById("aluno-notes");
+  const feeInput = document.getElementById("aluno-fee");
+  const cpfInput = document.getElementById("aluno-cpf");
+
+  const nome = nomeInput.value.trim();
+  if (!nome) return;
+  const birth = nascInput.value || undefined;
+  const phone = foneInput.value || undefined;
+  const position = posInput.value || undefined;
+  const notes = notesInput.value || undefined;
+  const feeVal = feeInput.value;
+  // Aplica valor de mensalidade: se informado, usa o valor inserido; caso contrário, utiliza
+  // o valor padrão definido nas configurações (settings.defaultFee), se houver
+  let monthlyFee;
+  if (feeVal) {
+    monthlyFee = Number(feeVal);
+  } else if (settings && settings.defaultFee != null) {
+    monthlyFee = Number(settings.defaultFee);
+  } else {
+    monthlyFee = undefined;
+  }
+  // captura CPF; obrigatório se informado. Se vazio, mantém undefined.
+  const cpf = cpfInput.value.trim() || undefined;
+
+  if (editingStudentId) {
+    // Atualiza aluno existente
+    const st = students.find(x => x.id === editingStudentId);
+    if (st) {
+      Object.assign(st, {
+        name: nome,
+        birth,
+        phone,
+        position,
+        notes,
+        monthlyFee,
+        cpf
+      });
+      save(K.students, students);
+    }
+    // Reset flags e interface
+    editingStudentId = null;
+    document.getElementById('aluno-form-title').textContent = 'Novo aluno';
+    document.getElementById('btnAddAluno').textContent = 'Adicionar aluno';
+  } else {
+    // Cria novo aluno
+    const aluno = {
+      id: uid(),
+      name: nome,
+      birth,
+      phone,
+      position,
+      notes,
+      monthlyFee,
+      cpf
+    };
+    students.push(aluno);
+    save(K.students, students);
+  }
+
+  // Limpa campos
+  nomeInput.value = "";
+  nascInput.value = "";
+  foneInput.value = "";
+  posInput.value = "";
+  notesInput.value = "";
+  feeInput.value = "";
+  cpfInput.value = "";
+  renderAlunos();
+  fillMatriculasSelectors();
+});
+function renderAlunos() {
+  const tbody = document.getElementById("alunos-tbody");
+  const q = document.getElementById("aluno-busca").value.toLowerCase();
+  const list = students.filter(s => s.name.toLowerCase().includes(q));
+  document.getElementById("alunos-total").textContent = String(students.length);
+  tbody.innerHTML = list.map(s => `
+    <tr>
+      <td>${s.name}</td>
+      <td>${s.birth || "—"}</td>
+      <td>${age(s.birth)}</td>
+      <td>${s.position || "—"}</td>
+      <td>${s.phone || "—"}</td>
+      <td style="text-align:right;">
+        <div class="actions">
+          <button class="secondary" onclick='editAluno("${s.id}")'>Editar</button>
+          <button onclick='remAluno("${s.id}")'>Remover</button>
+          <button class="secondary" onclick='sendWhatsApp("${s.id}")'>WhatsApp</button>
+        </div>
+      </td>
+    </tr>
+  `).join("") || `<tr><td colspan="6" class="small">Nenhum aluno cadastrado ainda.</td></tr>`;
+}
+document.getElementById("aluno-busca").addEventListener("input", renderAlunos);
+window.editAluno = function(id) {
+  // Preenche o formulário com os dados do aluno e entra em modo de edição
+  const s = students.find(x => x.id === id);
+  if (!s) return;
+  editingStudentId = id;
+  document.getElementById('aluno-nome').value = s.name || '';
+  document.getElementById('aluno-nasc').value = s.birth || '';
+  document.getElementById('aluno-fone').value = s.phone || '';
+  document.getElementById('aluno-pos').value = s.position || '';
+  document.getElementById('aluno-notes').value = s.notes || '';
+  document.getElementById('aluno-fee').value = (s.monthlyFee != null ? s.monthlyFee : '');
+  document.getElementById('aluno-cpf').value = s.cpf || '';
+  document.getElementById('aluno-form-title').textContent = 'Editar aluno';
+  document.getElementById('btnAddAluno').textContent = 'Salvar alterações';
+}
+window.remAluno = function(id) {
+  const s = students.find(x => x.id === id);
+  if (!confirm(`Remover ${s.name}?`)) return;
+  students = students.filter(x => x.id !== id); save(K.students, students);
+  enrollments = enrollments.filter(e => e.studentId !== id); save(K.enrollments, enrollments);
+  attendance = attendance.filter(a => a.studentId !== id); save(K.attendance, attendance);
+  renderAll();
+}
+
+// Envia mensagem via WhatsApp usando o número do telefone do aluno e a mensagem padrão das configurações
+window.sendWhatsApp = function(studentId) {
+  const st = students.find(s => s.id === studentId);
+  if (!st || !st.phone) {
+    alert('Aluno sem telefone cadastrado.');
+    return;
+  }
+  // extrai apenas dígitos do telefone
+  const phoneDigits = st.phone.replace(/\D/g, '');
+  const msg = (settings && settings.whatsMsg) ? settings.whatsMsg : '';
+  // Monta URL do WhatsApp (prefixo 55 para Brasil)
+  const url = `https://wa.me/55${phoneDigits}?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+}
+
+// Turmas
+document.getElementById("btnAddTurma").addEventListener("click", () => {
+  const nameInput = document.getElementById("turma-nome");
+  const catInput = document.getElementById("turma-cat");
+  const coachInput = document.getElementById("turma-coach");
+  const locInput = document.getElementById("turma-local");
+  const dayInput = document.getElementById("turma-dia");
+  const timeInput = document.getElementById("turma-hora");
+  const capInput = document.getElementById("turma-cap");
+
+  const name = nameInput.value.trim();
+  if (!name) return;
+  const category = catInput.value || undefined;
+  const coach = coachInput.value || undefined;
+  const location = locInput.value || undefined;
+  const weekday = dayInput.value || undefined;
+  const time = timeInput.value || undefined;
+  const capacity = capInput.value ? Number(capInput.value) : undefined;
+
+  if (editingClassId) {
+    // atualizar turma existente
+    const c = classes.find(x => x.id === editingClassId);
+    if (c) {
+      Object.assign(c, { name, category, coach, location, weekday, time, capacity });
+      save(K.classes, classes);
+    }
+    editingClassId = null;
+    document.getElementById('turma-form-title').textContent = 'Nova turma';
+    document.getElementById('btnAddTurma').textContent = 'Criar turma';
+  } else {
+    // criar nova turma
+    const t = { id: uid(), name, category, coach, location, weekday, time, capacity };
+    classes.push(t);
+    save(K.classes, classes);
+  }
+  // limpar campos
+  [nameInput, catInput, coachInput, locInput, dayInput, timeInput, capInput].forEach(i => i.value = "");
+  renderTurmas(); fillMatriculasSelectors(); fillPresencasSelectors();
+});
+function renderTurmas() {
+  const tbody = document.getElementById("turmas-tbody");
+  const q = document.getElementById("turma-busca").value.toLowerCase();
+  const rosterCount = (classId) => enrollments.filter(e => e.classId === classId).length;
+  const list = classes.filter(c => (`${c.name} ${c.category||""}`).toLowerCase().includes(q));
+  document.getElementById("turmas-total").textContent = String(classes.length);
+  // Controla se usuário pode editar/remover turmas
+  const canEditClass = currentUser && currentUser.role === 'admin';
+  tbody.innerHTML = list.map(c => `
+    <tr>
+      <td>${c.name}</td>
+      <td>${c.category || "—"}</td>
+      <td>${(c.weekday && c.time) ? `${c.weekday} · ${c.time}` : "—"}</td>
+      <td>${c.coach || "—"}</td>
+      <td>${c.location || "—"}</td>
+      <td><span class="badge">${rosterCount(c.id)}</span></td>
+      <td style="text-align:right;">
+        <div class="actions">
+          ${canEditClass ? `<button class="secondary" onclick='editTurma("${c.id}")'>Editar</button><button onclick='remTurma("${c.id}")'>Remover</button>` : ''}
+        </div>
+      </td>
+    </tr>
+  `).join("") || `<tr><td colspan="7" class="small">Nenhuma turma cadastrada.</td></tr>`;
+  // Mostra ou esconde o formulário de criação/edição de turma conforme papel
+  const formCard = document.getElementById('turma-form-card');
+  if (formCard) {
+    if (canEditClass) {
+      formCard.style.display = '';
+    } else {
+      formCard.style.display = 'none';
+    }
+  }
+}
+document.getElementById("turma-busca").addEventListener("input", renderTurmas);
+window.editTurma = function(id) {
+  // Entra em modo de edição de turma: preenche o formulário e altera rótulos
+  const c = classes.find(x => x.id === id);
+  if (!c) return;
+  editingClassId = id;
+  document.getElementById('turma-nome').value = c.name || '';
+  document.getElementById('turma-cat').value = c.category || '';
+  document.getElementById('turma-coach').value = c.coach || '';
+  document.getElementById('turma-local').value = c.location || '';
+  document.getElementById('turma-dia').value = c.weekday || '';
+  document.getElementById('turma-hora').value = c.time || '';
+  document.getElementById('turma-cap').value = c.capacity != null ? c.capacity : '';
+  document.getElementById('turma-form-title').textContent = 'Editar turma';
+  document.getElementById('btnAddTurma').textContent = 'Salvar alterações';
+}
+window.remTurma = function(id) {
+  const c = classes.find(x => x.id === id);
+  if (!confirm(`Remover turma ${c.name}?`)) return;
+  classes = classes.filter(x => x.id !== id); save(K.classes, classes);
+  enrollments = enrollments.filter(e => e.classId !== id); save(K.enrollments, enrollments);
+  attendance = attendance.filter(a => a.classId !== id); save(K.attendance, attendance);
+  renderAll();
+}
+
+// Matrículas
+document.getElementById("btnMatricular").addEventListener("click", () => {
+  const sid = document.getElementById("mat-aluno").value;
+  const cid = document.getElementById("mat-turma").value;
+  if (!sid || !cid) return;
+  const already = enrollments.find(e => e.studentId === sid && e.classId === cid);
+  if (!already) enrollments.push({ id: uid(), studentId: sid, classId: cid, createdAt: new Date().toISOString() });
+  save(K.enrollments, enrollments);
+  renderMatriculasList();
+});
+function fillMatriculasSelectors() {
+  const selAluno = document.getElementById("mat-aluno");
+  const selTurma = document.getElementById("mat-turma");
+  selAluno.innerHTML = `<option value=\"\">Selecione um aluno</option>` + students.map(s => `<option value="${s.id}">${s.name}</option>`).join("");
+  selTurma.innerHTML = `<option value=\"\">Selecione uma turma</option>` + classes.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+}
+function renderMatriculasList() {
+  const wrap = document.getElementById("mat-listas");
+  wrap.innerHTML = classes.map(c => {
+    const roster = enrollments.filter(e => e.classId === c.id).map(e => students.find(s => s.id === e.studentId)).filter(Boolean);
+    const lis = roster.length ? roster.map(st => `<li style="display:flex;justify-content:space-between;gap:8px; padding:6px 10px; background:#f4f6f9; border:1px solid #e5eaf0; border-radius:10px;"><span>${st.name}</span><button class="secondary" onclick='desmat("${st.id}","${c.id}")'>Remover</button></li>`).join("") : `<div class="small">Sem alunos matriculados.</div>`;
+    return `
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div><strong>${c.name}</strong> <span class="small">(${c.category || "—"})</span></div>
+          <span class="badge">${roster.length} alunos</span>
+        </div>
+        <div>${c.weekday && c.time ? `${c.weekday} · ${c.time}` : "Sem horário"}</div>
+        <div>${c.location ? `Local: ${c.location}` : ""}</div>
+        <div>${c.coach ? `Técnico: ${c.coach}` : ""}</div>
+        <ul style="margin-top:8px; display:grid; gap:8px; padding:0; list-style:none;">${lis}</ul>
+      </div>
+    `;
+  }).join("");
+}
+window.desmat = function(studentId, classId) {
+  enrollments = enrollments.filter(e => !(e.studentId === studentId && e.classId === classId));
+  save(K.enrollments, enrollments);
+  renderMatriculasList();
+}
+
+// Presença
+function fillPresencasSelectors() {
+  const sel = document.getElementById("pres-turma");
+  sel.innerHTML = classes.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+  if (classes.length) sel.value = classes[0].id;
+  document.getElementById("pres-data").value = todayISO();
+}
+document.getElementById("btnSalvarPres").addEventListener("click", () => {
+  const classId = document.getElementById("pres-turma").value;
+  const date = document.getElementById("pres-data").value;
+  const checkboxes = document.querySelectorAll('[data-mark]');
+  const marks = {};
+  checkboxes.forEach(cb => { marks[cb.getAttribute('data-id')] = cb.checked; });
+  // Replace existing for same keys
+  Object.entries(marks).forEach(([studentId, present]) => {
+    const idx = attendance.findIndex(a => a.classId === classId && a.studentId === studentId && a.date === date);
+    if (idx >= 0) attendance[idx].status = present ? "present" : "absent";
+    else attendance.push({ id: uid(), classId, studentId, date, status: present ? "present" : "absent" });
+  });
+  save(K.attendance, attendance);
+  alert("Presença salva!");
+});
+
+// Imprime/gera folha de chamada da turma selecionada
+document.getElementById('btnPrintPres').addEventListener('click', () => {
+  printChamada();
+});
+function printChamada() {
+  const classId = document.getElementById('pres-turma').value;
+  const dateStr = document.getElementById('pres-data').value;
+  if (!classId || !dateStr) { alert('Selecione turma e data para imprimir.'); return; }
+  const cls = classes.find(c => c.id === classId);
+  // lista de alunos matriculados na turma
+  const roster = enrollments
+    .filter(e => e.classId === classId)
+    .map(e => students.find(s => s.id === e.studentId))
+    .filter(Boolean)
+    .sort((a,b) => a.name.localeCompare(b.name));
+  // Monta linhas da tabela: nome, idade e presença (Sim/Não)
+  let rowsHtml = '';
+  roster.forEach(st => {
+    const rec = attendance.find(a => a.classId === classId && a.studentId === st.id && a.date === dateStr);
+    const pres = rec ? (rec.status === 'present' ? 'Sim' : 'Não') : '';
+    const idade = age(st.birth);
+    rowsHtml += `<tr><td>${st.name}</td><td>${idade}</td><td style="text-align:center;">${pres}</td></tr>`;
+  });
+  const turmaNome = cls ? cls.name : '';
+  const titulo = `Folha de chamada - ${turmaNome}`;
+  const html = `<!doctype html><html lang="pt-br"><head><meta charset="utf-8"><title>${titulo}</title><style>
+    body{font-family:Arial, sans-serif;margin:20px;}
+    h2{margin-bottom:8px;}
+    table{width:100%;border-collapse:collapse;margin-top:12px;}
+    th, td{border:1px solid #000;padding:6px;}
+    th{text-align:left;background:#f0f0f0;}
+    td{text-align:left;}
+  </style></head><body>
+    <h2>${titulo}</h2>
+    <p>Data: ${dateStr}</p>
+    <table>
+      <thead><tr><th>Nome</th><th>Idade</th><th style="text-align:center;">Presente</th></tr></thead>
+      <tbody>
+        ${rowsHtml || '<tr><td colspan="3">Sem alunos matriculados.</td></tr>'}
+      </tbody>
+    </table>
+  </body></html>`;
+  const win = window.open('', '_blank', 'width=800,height=600');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
+  }
+}
+function renderPresencasTable() {
+  const classId = document.getElementById("pres-turma").value;
+  const date = document.getElementById("pres-data").value;
+  const tbody = document.getElementById("pres-tbody");
+  const roster = enrollments.filter(e => e.classId === classId).map(e => students.find(s => s.id === e.studentId)).filter(Boolean);
+  tbody.innerHTML = roster.map(s => {
+    const rec = attendance.find(a => a.classId === classId && a.studentId === s.id && a.date === date);
+    const checked = rec ? (rec.status === "present") : true;
+    return `<tr><td>${s.name}</td><td style="text-align:center;"><label class="checkbox"><input type="checkbox" data-mark data-id="${s.id}" ${checked ? "checked" : ""}><span>Sim</span></label></td></tr>`;
+  }).join("") || `<tr><td colspan="2" class="small">Sem alunos nesta turma.</td></tr>`;
+}
+document.getElementById("pres-turma").addEventListener("change", renderPresencasTable);
+document.getElementById("pres-data").addEventListener("change", renderPresencasTable);
+
+// Relatórios
+function renderRelatorios() {
+  // Matrículas por turma
+  const tb1 = document.getElementById("rep-mat");
+  tb1.innerHTML = classes.map(c => {
+    const count = enrollments.filter(e => e.classId === c.id).length;
+    return `<tr><td>${c.name}</td><td style="text-align:right;">${count}</td></tr>`;
+  }).join("") || `<tr><td colspan="2" class="small">Sem turmas.</td></tr>`;
+
+  // Presença 30 dias
+  const start = new Date(Date.now() - 30*24*60*60*1000);
+  const by = {};
+  attendance.forEach(a => {
+    const d = new Date(a.date);
+    if (d >= start) {
+      if (!by[a.studentId]) by[a.studentId] = { present: 0, total: 0 };
+      by[a.studentId].total += 1;
+      if (a.status === "present") by[a.studentId].present += 1;
+    }
+  });
+  const rows = Object.entries(by).map(([sid, v]) => {
+    const st = students.find(s => s.id === sid);
+    const rate = v.total ? Math.round((v.present / v.total) * 100) : 0;
+    return { name: st ? st.name : "—", present: v.present, total: v.total, rate };
+  }).sort((a,b) => b.rate - a.rate);
+  const tb2 = document.getElementById("rep-pres");
+  tb2.innerHTML = rows.map(r => `<tr><td>${r.name}</td><td style="text-align:right;">${r.present}</td><td style="text-align:right;">${r.total}</td><td style="text-align:right;">${r.rate}%</td></tr>`).join("")
+    || `<tr><td colspan="4" class="small">Sem dados de presença ainda.</td></tr>`;
+}
+
+// Mensalidades
+function renderMensalidades() {
+  const monthInput = document.getElementById("mensal-month");
+  let ym = monthInput.value;
+  if (!ym) {
+    const d = new Date();
+    ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    monthInput.value = ym;
+  }
+  const tbody = document.getElementById("mensal-tbody");
+  tbody.innerHTML = students.map(s => {
+    const rec = payments.find(p => p.studentId === s.id && p.yearMonth === ym);
+    const paid = !!rec;
+    let value;
+    if (rec && rec.value != null) {
+      value = rec.value;
+    } else if (s.monthlyFee != null) {
+      value = s.monthlyFee;
+    } else {
+      value = "";
+    }
+    // Data de vencimento usa configuração global se definida, caso contrário padroniza para dia 10
+    const dueDay = (settings && settings.dueDay != null ? settings.dueDay : 10);
+    const dueDateStr = `${ym}-${String(dueDay).padStart(2, '0')}`;
+    const overdue = (new Date() > new Date(dueDateStr)) && !paid;
+    // determina se o usuário pode editar valores de mensalidade
+    const canEdit = currentUser && (currentUser.role === 'admin' || (currentUser.permissions && currentUser.permissions.mensalidades));
+    return `<tr data-id="${s.id}"${overdue ? ' class="overdue"' : ''}>
+      <td>${s.name}</td>
+      <td style="text-align:center;"><input type="checkbox" ${paid ? 'checked' : ''} data-paid ${canEdit ? '' : 'disabled'}></td>
+      <td style="text-align:right;"><input type="number" min="0" step="0.01" value="${value}" data-value style="width:80px;" ${canEdit ? '' : 'disabled'}></td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="3" class="small">Sem alunos.</td></tr>`;
+}
+document.getElementById("btnLoadMensalidades").addEventListener("click", renderMensalidades);
+document.getElementById("btnSalvarMensalidades").addEventListener("click", () => {
+  const month = document.getElementById("mensal-month").value;
+  if (!month) return;
+  const rows = document.querySelectorAll("#mensal-tbody tr[data-id]");
+  rows.forEach(row => {
+    const sid = row.getAttribute("data-id");
+    const paid = row.querySelector('input[type="checkbox"]').checked;
+    const valueInput = row.querySelector('input[data-value]');
+    const valueStr = valueInput.value;
+    const value = valueStr ? Number(valueStr) : undefined;
+    const idx = payments.findIndex(p => p.studentId === sid && p.yearMonth === month);
+    if (paid) {
+      if (idx >= 0) {
+        payments[idx].value = value;
+        payments[idx].date = new Date().toISOString();
+      } else {
+        payments.push({ id: uid(), studentId: sid, yearMonth: month, value, date: new Date().toISOString() });
+      }
+    } else {
+      if (idx >= 0) payments.splice(idx, 1);
+    }
+  });
+  save(K.payments, payments);
+  alert("Mensalidades salvas!");
+  renderMensalidades();
+  renderArrecadacao();
+});
+
+// Arrecadação
+function renderArrecadacao() {
+  const by = {};
+  payments.forEach(p => {
+    const ym = p.yearMonth;
+    const val = p.value != null ? Number(p.value) : 0;
+    if (!by[ym]) by[ym] = 0;
+    by[ym] += val;
+  });
+  const tbody = document.getElementById("arrecad-tbody");
+  const months = Object.keys(by).sort();
+  tbody.innerHTML = months.map(ym => {
+    const total = by[ym];
+    const [y, m] = ym.split("-");
+    const formatted = `${m}/${y}`;
+    // Se usuário é admin, mostra botão editar, caso contrário célula vazia
+    let actionHtml = '';
+    if (currentUser && currentUser.role === 'admin') {
+      actionHtml = `<button class="secondary edit-arrec" data-ym="${ym}">Editar</button>`;
+    }
+    return `<tr data-ym="${ym}"><td>${formatted}</td><td style="text-align:right;">R$ ${total.toFixed(2)}</td><td style="text-align:right;">${actionHtml}</td></tr>`;
+  }).join("") || `<tr><td colspan="3" class="small">Sem pagamentos registrados.</td></tr>`;
+  const totalGeral = Object.values(by).reduce((a,b) => a + b, 0);
+  const totalElem = document.getElementById("arrecad-total");
+  if (totalElem) totalElem.textContent = totalGeral.toFixed(2);
+}
+
+// Resumo de aulas por professor nos últimos 7 dias
+function renderProfessores() {
+  const tbody = document.getElementById('prof-tbody');
+  if (!tbody) return;
+  // define data de início (hoje - 6 dias para incluir a semana atual)
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+  // mapa de sessões únicas por turma e data
+  const sessionMap = {};
+  attendance.forEach(a => {
+    const d = new Date(a.date);
+    if (d >= start) {
+      // chave única por turma+data
+      const key = `${a.classId}|${a.date}`;
+      sessionMap[key] = a.classId;
+    }
+  });
+  const counts = {};
+  Object.values(sessionMap).forEach(classId => {
+    const cls = classes.find(c => c.id === classId);
+    const coach = cls && cls.coach ? cls.coach : '(Sem técnico)';
+    counts[coach] = (counts[coach] || 0) + 1;
+  });
+  const rows = Object.entries(counts).map(([coach, count]) => {
+    return `<tr><td>${coach}</td><td style="text-align:right;">${count}</td></tr>`;
+  });
+  tbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="2" class="small">Sem aulas registradas nesta semana.</td></tr>`;
+}
+
+// Renderiza o formulário de configurações com os valores atuais
+function renderConfig() {
+  const dueDayInput = document.getElementById('config-due-day');
+  const defaultFeeInput = document.getElementById('config-default-fee');
+  const footerInput = document.getElementById('config-footer-text');
+  const whatsInput = document.getElementById('config-whats-msg');
+  if (!dueDayInput) return;
+  dueDayInput.value = settings.dueDay != null ? settings.dueDay : '';
+  defaultFeeInput.value = settings.defaultFee != null ? settings.defaultFee : '';
+  footerInput.value = settings.footerText != null ? settings.footerText : '';
+  if (whatsInput) whatsInput.value = settings.whatsMsg != null ? settings.whatsMsg : '';
+}
+
+// Salvar configurações quando clicado o botão
+const btnSaveConfig = document.getElementById('btnSaveConfig');
+if (btnSaveConfig) {
+  btnSaveConfig.addEventListener('click', () => {
+    const dueDayVal = parseInt(document.getElementById('config-due-day').value);
+    settings.dueDay = isNaN(dueDayVal) ? undefined : dueDayVal;
+    const defFeeStr = document.getElementById('config-default-fee').value;
+    settings.defaultFee = defFeeStr ? Number(defFeeStr) : null;
+    const footerText = document.getElementById('config-footer-text').value.trim();
+    settings.footerText = footerText || null;
+    // salva mensagem padrão do WhatsApp
+    const whatsMsg = document.getElementById('config-whats-msg').value;
+    settings.whatsMsg = whatsMsg || '';
+    save(K.settings, settings);
+    // atualiza rodapé imediatamente
+    const ft = document.getElementById('footnote-text');
+    if (ft) {
+      ft.textContent = settings.footerText || 'Aplicativo desenvolvido por Matheus Cabral Valente, versão BETA';
+    }
+    alert('Configurações salvas!');
+    renderAll();
+  });
+}
+
+// Permite edição de arrecadação (total mensal) apenas para administradores.
+// Ao clicar no botão de edição na tabela de arrecadação, será solicitado um novo total.
+document.addEventListener('click', function(ev) {
+  const target = ev.target;
+  if (target && target.classList.contains('edit-arrec')) {
+    // Somente admin
+    if (!(currentUser && currentUser.role === 'admin')) return;
+    const ym = target.getAttribute('data-ym');
+    if (!ym) return;
+    // Calcula total atual para o mês
+    let currentTotal = 0;
+    payments.forEach(p => {
+      if (p.yearMonth === ym) {
+        const val = p.value != null ? Number(p.value) : 0;
+        currentTotal += val;
+      }
+    });
+    const [year, month] = ym.split('-');
+    const formatted = `${month}/${year}`;
+    const newValStr = prompt(`Novo total para ${formatted} (R$):`, currentTotal.toFixed(2));
+    if (newValStr === null) return;
+    const newTotal = parseFloat(newValStr.replace(',', '.'));
+    if (isNaN(newTotal)) {
+      alert('Valor inválido');
+      return;
+    }
+    const diff = newTotal - currentTotal;
+    // Ajusta o valor distribuindo a diferença no primeiro registro ou criando um novo
+    const monthRecords = payments.filter(p => p.yearMonth === ym);
+    if (monthRecords.length > 0) {
+      // Ajusta no primeiro registro
+      monthRecords[0].value = (monthRecords[0].value != null ? Number(monthRecords[0].value) : 0) + diff;
+      monthRecords[0].date = new Date().toISOString();
+    } else {
+      // Cria um registro de ajuste sem aluno específico
+      payments.push({ id: uid(), studentId: '__ajuste__', yearMonth: ym, value: newTotal, date: new Date().toISOString() });
+    }
+    save(K.payments, payments);
+    alert('Arrecadação atualizada!');
+    renderMensalidades();
+    renderArrecadacao();
+  }
+});
+
+// Renderiza a lista de usuários (para administradores)
+function renderUsers() {
+  const tbody = document.getElementById('users-tbody');
+  if (!tbody) return;
+  // lista apenas professores (admin não pode ser removido)
+  const rows = users
+    .filter(u => u.role !== 'admin')
+    .map(u => {
+      const accesses = Object.keys(u.permissions || {}).filter(k => u.permissions[k]).map(k => {
+        // traduz as chaves para nomes de abas humanizados
+        const map = {
+          alunos: 'Alunos', turmas: 'Turmas', matriculas: 'Matrículas', presenca: 'Presença', relatorios: 'Relatórios', mensalidades: 'Mensalidades', arrecadacao: 'Arrecadação', professores: 'Professores'
+        };
+        return map[k] || k;
+      }).join(', ') || 'Nenhum';
+      return `<tr>
+        <td>${u.username}</td>
+        <td>${u.role}</td>
+        <td>${accesses}</td>
+        <td style="text-align:right;"><button onclick='remUser("${u.id}")'>Remover</button></td>
+      </tr>`;
+    });
+  tbody.innerHTML = rows.join('') || `<tr><td colspan="4" class="small">Nenhum usuário cadastrado.</td></tr>`;
+}
+
+// Remove um usuário
+window.remUser = function(id) {
+  const u = users.find(x => x.id === id);
+  if (!u) return;
+  if (!confirm(`Remover usuário ${u.username}?`)) return;
+  users = users.filter(x => x.id !== id);
+  save(K_USERS, users);
+  renderUsers();
+};
+
+// Evento para criar novo usuário professor
+const btnAddUser = document.getElementById('btnAddUser');
+if (btnAddUser) {
+  btnAddUser.addEventListener('click', () => {
+    const usernameInput = document.getElementById('user-username');
+    const passInput = document.getElementById('user-password');
+    const passConfInput = document.getElementById('user-password-conf');
+    const username = usernameInput.value.trim();
+    const pass = passInput.value;
+    const pass2 = passConfInput.value;
+    if (!username || !pass) { alert('Informe nome de usuário e senha'); return; }
+    if (pass !== pass2) { alert('As senhas não coincidem'); return; }
+    if (users.find(u => u.username === username)) { alert('Usuário já existe'); return; }
+    const perms = {};
+    document.querySelectorAll('[data-up]').forEach(cb => {
+      const key = cb.getAttribute('data-up');
+      perms[key] = cb.checked;
+    });
+    users.push({ id: uid(), username, password: pass, role: 'teacher', permissions: perms });
+    save(K_USERS, users);
+    // limpa campos
+    usernameInput.value = '';
+    passInput.value = '';
+    passConfInput.value = '';
+    // seleciona padrões: alunos a relatórios marcados, mensalidades/arrecadacao desmarcadas
+    document.querySelectorAll('[data-up]').forEach(cb => {
+      const key = cb.getAttribute('data-up');
+      // por padrão, professores não têm acesso a mensalidades, arrecadação e resumo de professores
+      cb.checked = !(key === 'mensalidades' || key === 'arrecadacao' || key === 'professores');
+    });
+    renderUsers();
+  });
+}
+
+// Initial fills
+function renderAll() {
+  renderAlunos();
+  renderTurmas();
+  renderMatriculasList();
+  renderPresencasTable();
+  renderRelatorios();
+  fillMatriculasSelectors();
+  // presenca selectors not re-filled every time to avoid resetting selection
+  renderMensalidades();
+  renderArrecadacao();
+  // Atualiza lista de usuários se a função existir
+  if (typeof renderUsers === 'function') renderUsers();
+  // Atualiza página de configurações com valores atuais
+  if (typeof renderConfig === 'function') renderConfig();
+  // Atualiza texto do rodapé conforme configuração
+  const ft = document.getElementById('footnote-text');
+  if (ft) {
+    ft.textContent = settings && settings.footerText ? settings.footerText : 'Aplicativo desenvolvido por Matheus Cabral Valente, versão BETA';
+  }
+  // Atualiza placeholder do campo de mensalidade do aluno para refletir valor padrão
+  const feeInputElem = document.getElementById('aluno-fee');
+  if (feeInputElem) {
+    if (settings && settings.defaultFee != null) {
+      const formatted = Number(settings.defaultFee).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      feeInputElem.placeholder = `R$ ${formatted}`;
+    } else {
+      feeInputElem.placeholder = 'R$ 80,00';
+    }
+  }
+  // Atualiza resumo de aulas por professor
+  if (typeof renderProfessores === 'function') renderProfessores();
+}
+fillMatriculasSelectors();
+fillPresencasSelectors();
+renderAll();
+// Verifica se há usuário logado; caso contrário, exibe tela de login
+if (!currentUser) {
+  showLogin();
+} else {
+  hideLogin();
+  renderRoleAccess();
+}
+</script>
+</body>
+</html>
