@@ -548,7 +548,12 @@ if (loginBtn) {
       sessionStorage.setItem('currentUser', JSON.stringify(u));
       hideLogin();
       renderRoleAccess();
-      renderAll();
+      // sync data from server upon successful login
+      if (USE_API) {
+        syncFromServer();
+      } else {
+        renderAll();
+      }
     } else {
       alert('Usuário ou senha incorretos');
     }
@@ -576,7 +581,11 @@ function doLogin() {
     sessionStorage.setItem('currentUser', JSON.stringify(u));
     hideLogin();
     renderRoleAccess();
-    renderAll();
+    if (USE_API) {
+      syncFromServer();
+    } else {
+      renderAll();
+    }
   } else {
     alert('Usuário ou senha incorretos');
   }
@@ -588,6 +597,35 @@ document.getElementById('btnLogout').addEventListener('click', () => {
   currentUser = null;
   showLogin();
 });
+
+// --- API Synchronization ---
+// Fetch data from the backend and update local state. When USE_API is true,
+// this function retrieves all collections from the server and replaces the
+// in-memory arrays and localStorage. After updating, it rerenders the UI.
+async function syncFromServer() {
+  if (!USE_API) return;
+  try {
+    const [stu, cls, ens, att, pay] = await Promise.all([
+      apiGet('/students'),
+      apiGet('/classes'),
+      apiGet('/enrollments'),
+      apiGet('/attendance'),
+      apiGet('/payments'),
+    ]);
+    if (Array.isArray(stu)) { students = stu; save(K.students, students); }
+    if (Array.isArray(cls)) { classes = cls; save(K.classes, classes); }
+    if (Array.isArray(ens)) { enrollments = ens; save(K.enrollments, enrollments); }
+    if (Array.isArray(att)) { attendance = att; save(K.attendance, attendance); }
+    if (Array.isArray(pay)) { payments = pay; save(K.payments, payments); }
+    renderAll();
+  } catch (err) {
+    console.error('Erro ao sincronizar com o servidor:', err);
+  }
+}
+// Periodically refresh from the server every 10 seconds when using API
+if (USE_API) {
+  setInterval(syncFromServer, 10000);
+}
 // Utilities
 function load(k, def) { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : def; } catch { return def; } }
 function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
@@ -601,7 +639,49 @@ function age(b) {
   return a;
 }
 
-// State
+// Whether to sync data with a backend API. When true, data will be loaded from
+// and saved to the API defined in API_URL. When false, data remains local in
+// localStorage. To enable real‑time-ish updates across devices, set this
+// constant to true and run the provided backend server. The backend must
+// implement REST endpoints as defined in backend/server.js.
+const USE_API = true;
+// Base URL for the backend API. If you deploy the API elsewhere, update
+// this value accordingly.
+const API_URL = 'http://localhost:3000';
+
+// Generic helpers for calling the backend API. If USE_API is false, these
+// functions return immediately without performing network requests.
+async function apiGet(path) {
+  if (!USE_API) return Promise.resolve(null);
+  const res = await fetch(`${API_URL}${path}`);
+  return await res.json();
+}
+async function apiPost(path, data) {
+  if (!USE_API) return Promise.resolve(null);
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  return await res.json();
+}
+async function apiPut(path, data) {
+  if (!USE_API) return Promise.resolve(null);
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  return await res.json();
+}
+async function apiDelete(path) {
+  if (!USE_API) return Promise.resolve(null);
+  const res = await fetch(`${API_URL}${path}`, { method: 'DELETE' });
+  return await res.json();
+}
+
+// State: in-memory arrays. They will mirror the data stored on the server
+// (when USE_API is true) and/or in localStorage (for offline fallback).
 let students = load(K.students, []);
 let classes = load(K.classes, []);
 let enrollments = load(K.enrollments, []);
@@ -719,6 +799,10 @@ document.getElementById("btnAddAluno").addEventListener("click", () => {
         cpf
       });
       save(K.students, students);
+      // Persist update to backend
+      if (USE_API) {
+        apiPut(`/students/${editingStudentId}`, st).catch(err => console.error('Erro ao atualizar aluno', err));
+      }
     }
     // Reset flags e interface
     editingStudentId = null;
@@ -738,6 +822,10 @@ document.getElementById("btnAddAluno").addEventListener("click", () => {
     };
     students.push(aluno);
     save(K.students, students);
+    // Persist creation to backend
+    if (USE_API) {
+      apiPost('/students', aluno).catch(err => console.error('Erro ao criar aluno', err));
+    }
   }
 
   // Limpa campos
@@ -795,6 +883,12 @@ window.remAluno = function(id) {
   students = students.filter(x => x.id !== id); save(K.students, students);
   enrollments = enrollments.filter(e => e.studentId !== id); save(K.enrollments, enrollments);
   attendance = attendance.filter(a => a.studentId !== id); save(K.attendance, attendance);
+  // Remove payment records associated with this student
+  payments = payments.filter(p => p.studentId !== id); save(K.payments, payments);
+  // Persist deletion to backend
+  if (USE_API) {
+    apiDelete(`/students/${id}`).catch(err => console.error('Erro ao remover aluno', err));
+  }
   renderAll();
 }
 
@@ -838,6 +932,10 @@ document.getElementById("btnAddTurma").addEventListener("click", () => {
     if (c) {
       Object.assign(c, { name, category, coach, location, weekday, time, capacity });
       save(K.classes, classes);
+      // Atualiza a turma no backend
+      if (USE_API) {
+        apiPut(`/classes/${editingClassId}`, c).catch(err => console.error('Erro ao atualizar turma', err));
+      }
     }
     editingClassId = null;
     document.getElementById('turma-form-title').textContent = 'Nova turma';
@@ -847,6 +945,10 @@ document.getElementById("btnAddTurma").addEventListener("click", () => {
     const t = { id: uid(), name, category, coach, location, weekday, time, capacity };
     classes.push(t);
     save(K.classes, classes);
+    // Salva a nova turma no backend
+    if (USE_API) {
+      apiPost('/classes', t).catch(err => console.error('Erro ao criar turma', err));
+    }
   }
   // limpar campos
   [nameInput, catInput, coachInput, locInput, dayInput, timeInput, capInput].forEach(i => i.value = "");
@@ -904,9 +1006,18 @@ window.editTurma = function(id) {
 window.remTurma = function(id) {
   const c = classes.find(x => x.id === id);
   if (!confirm(`Remover turma ${c.name}?`)) return;
-  classes = classes.filter(x => x.id !== id); save(K.classes, classes);
-  enrollments = enrollments.filter(e => e.classId !== id); save(K.enrollments, enrollments);
-  attendance = attendance.filter(a => a.classId !== id); save(K.attendance, attendance);
+  classes = classes.filter(x => x.id !== id);
+  save(K.classes, classes);
+  // remove related enrollments and attendance
+  enrollments = enrollments.filter(e => e.classId !== id);
+  save(K.enrollments, enrollments);
+  attendance = attendance.filter(a => a.classId !== id);
+  save(K.attendance, attendance);
+  // Remove no backend
+  if (USE_API) {
+    apiDelete(`/classes/${id}`).catch(err => console.error('Erro ao remover turma', err));
+    // no need to remove enrollments and attendance individually, server cascades
+  }
   renderAll();
 }
 
@@ -916,8 +1027,15 @@ document.getElementById("btnMatricular").addEventListener("click", () => {
   const cid = document.getElementById("mat-turma").value;
   if (!sid || !cid) return;
   const already = enrollments.find(e => e.studentId === sid && e.classId === cid);
-  if (!already) enrollments.push({ id: uid(), studentId: sid, classId: cid, createdAt: new Date().toISOString() });
-  save(K.enrollments, enrollments);
+  if (!already) {
+    const enrol = { id: uid(), studentId: sid, classId: cid, createdAt: new Date().toISOString() };
+    enrollments.push(enrol);
+    save(K.enrollments, enrollments);
+    // Persist enrollment to backend
+    if (USE_API) {
+      apiPost('/enrollments', enrol).catch(err => console.error('Erro ao matricular aluno', err));
+    }
+  }
   renderMatriculasList();
 });
 function fillMatriculasSelectors() {
@@ -946,8 +1064,16 @@ function renderMatriculasList() {
   }).join("");
 }
 window.desmat = function(studentId, classId) {
-  enrollments = enrollments.filter(e => !(e.studentId === studentId && e.classId === classId));
-  save(K.enrollments, enrollments);
+  // Find the enrollment to remove
+  const idx = enrollments.findIndex(e => e.studentId === studentId && e.classId === classId);
+  if (idx >= 0) {
+    const removed = enrollments.splice(idx, 1)[0];
+    save(K.enrollments, enrollments);
+    // Persist deletion to backend
+    if (USE_API && removed && removed.id) {
+      apiDelete(`/enrollments/${removed.id}`).catch(err => console.error('Erro ao remover matrícula', err));
+    }
+  }
   renderMatriculasList();
 }
 
@@ -967,8 +1093,21 @@ document.getElementById("btnSalvarPres").addEventListener("click", () => {
   // Replace existing for same keys
   Object.entries(marks).forEach(([studentId, present]) => {
     const idx = attendance.findIndex(a => a.classId === classId && a.studentId === studentId && a.date === date);
-    if (idx >= 0) attendance[idx].status = present ? "present" : "absent";
-    else attendance.push({ id: uid(), classId, studentId, date, status: present ? "present" : "absent" });
+    if (idx >= 0) {
+      attendance[idx].status = present ? "present" : "absent";
+      // persist update to backend
+      if (USE_API) {
+        const rec = attendance[idx];
+        apiPut(`/attendance/${rec.id}`, rec).catch(err => console.error('Erro ao atualizar presença', err));
+      }
+    } else {
+      const newRec = { id: uid(), classId, studentId, date, status: present ? "present" : "absent" };
+      attendance.push(newRec);
+      // persist creation to backend
+      if (USE_API) {
+        apiPost('/attendance', newRec).catch(err => console.error('Erro ao criar presença', err));
+      }
+    }
   });
   save(K.attendance, attendance);
   alert("Presença salva!");
@@ -1118,11 +1257,27 @@ document.getElementById("btnSalvarMensalidades").addEventListener("click", () =>
       if (idx >= 0) {
         payments[idx].value = value;
         payments[idx].date = new Date().toISOString();
+        // persist update to backend
+        if (USE_API) {
+          const rec = payments[idx];
+          apiPut(`/payments/${rec.id}`, rec).catch(err => console.error('Erro ao atualizar mensalidade', err));
+        }
       } else {
-        payments.push({ id: uid(), studentId: sid, yearMonth: month, value, date: new Date().toISOString() });
+        const newRec = { id: uid(), studentId: sid, yearMonth: month, value, date: new Date().toISOString() };
+        payments.push(newRec);
+        // persist creation to backend
+        if (USE_API) {
+          apiPost('/payments', newRec).catch(err => console.error('Erro ao criar mensalidade', err));
+        }
       }
     } else {
-      if (idx >= 0) payments.splice(idx, 1);
+      if (idx >= 0) {
+        const removed = payments.splice(idx, 1)[0];
+        // persist deletion to backend
+        if (USE_API && removed && removed.id) {
+          apiDelete(`/payments/${removed.id}`).catch(err => console.error('Erro ao remover mensalidade', err));
+        }
+      }
     }
   });
   save(K.payments, payments);
@@ -1300,6 +1455,10 @@ window.remUser = function(id) {
   if (!confirm(`Remover usuário ${u.username}?`)) return;
   users = users.filter(x => x.id !== id);
   save(K_USERS, users);
+  // Persist removal to backend
+  if (USE_API) {
+    apiDelete(`/users/${id}`).catch(err => console.error('Erro ao remover usuário', err));
+  }
   renderUsers();
 };
 
@@ -1321,8 +1480,13 @@ if (btnAddUser) {
       const key = cb.getAttribute('data-up');
       perms[key] = cb.checked;
     });
-    users.push({ id: uid(), username, password: pass, role: 'teacher', permissions: perms });
+    const newUser = { id: uid(), username, password: pass, role: 'teacher', permissions: perms };
+    users.push(newUser);
     save(K_USERS, users);
+    // Persist new user to backend
+    if (USE_API) {
+      apiPost('/users', newUser).catch(err => console.error('Erro ao criar usuário', err));
+    }
     // limpa campos
     usernameInput.value = '';
     passInput.value = '';
